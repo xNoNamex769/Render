@@ -1,4 +1,3 @@
-// src/types/express/index.d.ts
 
 import { Usuario } from "../models/Usuario"; // ajusta si tu modelo tiene más o menos campos
 
