@@ -12,17 +12,17 @@ import { PerfilInstructor } from "../models/PerfilInstructor";
 export class UsuarioController {
   // Obtener todos los usuarios ordenados por fecha de creación
   static getAll = async (req: Request, res: Response) => {
-    try {
-      console.log("GET /api/usuario - Obtener todos los usuarios");
-      const usuarios = await Usuario.findAll({
-        order: [["createdAt", "ASC"]],
-      });
-      res.json(usuarios);
-    } catch (error) {
-      res.status(500).json({ error: "Hubo un error al obtener los usuarios" });
-    }
-  };
-
+  try {
+    console.log("GET /api/usuario - Obtener todos los usuarios");
+    const usuarios = await Usuario.findAll({
+      order: [["createdAt", "ASC"]],
+    });
+    res.json(usuarios);
+  } catch (error) {
+    console.error("Error al obtener usuarios:", error);  // <--- Añadido para ver error real
+    res.status(500).json({ error: "Hubo un error al obtener los usuarios" });
+  }
+};
   // Obtener un usuario por su ID
 static getUsuarioId = async (req: Request, res: Response) => {
   try {
