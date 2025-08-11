@@ -3,6 +3,35 @@ import dotenv from 'dotenv';
 
 import { Usuario } from '../models/Usuario';
 import { Actividad } from '../models/Actividad';
+import { RolUsuario } from '../models/RolUsuario';
+import { Aprendiz } from '../models/Aprendiz';
+import { PrestamoElementos } from '../models/PrestamoElementos';
+import { Asistencia } from '../models/Asistencia';
+import { Constancia } from '../models/Constancia';
+import { ConsultaIA } from '../models/ConsultaIA';
+import { RelUsuarioEvento } from '../models/RelUsuarioEvento';
+import { RelUsuarioFeedback } from '../models/RelUsuarioFeedback';
+import { SolicitudApoyo } from '../models/SolicitudApoyo';
+import { Feedback } from '../models/Feedback';
+import { Notificaciones } from '../models/Notificaciones';
+import { PlanificacionEvento } from '../models/PlanificacionEvento';
+import { Evento } from '../models/Evento';
+import { PerfilInstructor } from '../models/PerfilInstructor';
+import { EventoActividad } from '../models/EventoActividad';
+import { ReaccionEvento } from '../models/ReaccionEvento';
+import { ResumenEventoIA } from '../models/ResumenEventoIA';
+import { ComentarioIA } from '../models/ComentarioIA';
+import { ConfirmacionAsistencia } from '../models/ConfirmacionAsistencia';
+import { Elemento } from '../models/Elemento';
+import { GestionEvento } from '../models/GestionEvento';
+import { HistorialSolicitud } from '../models/HistorialSolicitud';
+
+
+
+
+
+
+
 
 dotenv.config();
 
@@ -15,7 +44,7 @@ export const db = new Sequelize({
   dialect: 'mysql',
   timezone: '-05:00',
 
-  models: [Usuario, Actividad],
+  models: [Usuario, Actividad, RolUsuario, Aprendiz, PrestamoElementos, Asistencia, Constancia, ConsultaIA, RelUsuarioEvento, RelUsuarioFeedback, SolicitudApoyo, Feedback, Notificaciones, PlanificacionEvento, Evento, PerfilInstructor, EventoActividad, ReaccionEvento, ResumenEventoIA, ComentarioIA, ConfirmacionAsistencia, Elemento, GestionEvento, HistorialSolicitud],
 
   logging: false,
   pool: {
