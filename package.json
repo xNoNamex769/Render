@@ -7,7 +7,6 @@
     "start": "node dist/index.js",
     "dev": "nodemon  src/index.ts",
     "heroku-postbuild": "npm run build"
-
   },
   "keywords": [],
   "author": "",
@@ -15,6 +14,7 @@
   "description": "",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "colors": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
@@ -48,7 +48,6 @@
     "@types/nodemailer": "^6.4.17",
     "@types/qrcode": "^1.5.5",
     "@types/sequelize": "^4.28.20",
-    "colors": "^1.4.0",
     "morgan": "^1.10.0",
     "nodemon": "^3.1.9",
     "npm": "^11.2.0",
