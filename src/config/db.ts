@@ -1,6 +1,9 @@
 import { Sequelize } from 'sequelize-typescript';
 import dotenv from 'dotenv';
 
+import { Usuario } from '../models/Usuario';
+import { Actividad } from '../models/Actividad';
+
 dotenv.config();
 
 export const db = new Sequelize({
@@ -12,7 +15,8 @@ export const db = new Sequelize({
   dialect: 'mysql',
   timezone: '-05:00',
 
-  models: [__dirname + '/../models/**/*.ts'],  // Ruta de tus modelos
+  models: [Usuario, Actividad],
+
   logging: false,
   pool: {
     max: 10,
@@ -21,6 +25,6 @@ export const db = new Sequelize({
     idle: 10000,
   },
   define: {
-    timestamps: true,  // Aquí es donde habilitas el manejo automático de createdAt y updatedAt
+    timestamps: true,
   }
 });
