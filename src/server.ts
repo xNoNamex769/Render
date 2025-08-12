@@ -42,9 +42,7 @@ async function connectDB() {
       colors.blue.bold("Conexión exitosa a la Base de datos echo por Alex")
     );
 
-    await db.query("SET FOREIGN_KEY_CHECKS = 0");
-    await db.sync({ force: true });
-    await db.query("SET FOREIGN_KEY_CHECKS = 1");
+    
     try {
       const [results, metadata] = await db.query("SELECT * FROM asistencia");
       console.log("Datos de ejemplo:", results);
