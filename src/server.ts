@@ -42,6 +42,9 @@ async function connectDB() {
       colors.blue.bold("Conexión exitosa a la Base de datos echo por Alex")
     );
 
+    await db.sync({ force: true });
+    console.log(colors.blue.bold("Base de datos y modelos sincronizados."));//
+
     try {
       const [results, metadata] = await db.query("SELECT * FROM asistencia");
       console.log("Datos de ejemplo:", results);
