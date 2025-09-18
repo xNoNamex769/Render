@@ -1,16 +1,21 @@
 // src/middlewares/uploadConfig.ts
-import multer from "multer";
-import path from "path";
+import multer, { FileFilterCallback } from "multer";
+import { Request } from "express";
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/usuarios/"); // Carpeta donde guardarás las imágenes
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9) + ext;
-    cb(null, uniqueName);
-  },
+// Guardar los archivos en memoria
+const storage = multer.memoryStorage();
+
+// Filtro para aceptar solo imágenes
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("❌ Solo se permiten archivos de imagen"));
+  }
+};
+
+export const upload = multer({
+  storage,  // ⚡ en memoria
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // máximo 5MB
 });
-
-export const upload = multer({ storage });
