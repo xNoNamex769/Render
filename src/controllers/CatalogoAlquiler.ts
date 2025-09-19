@@ -1,12 +1,34 @@
 import type { Request, Response } from "express";
-import {  PrestamoElementos } from "../models/PrestamoElementos";
+import { PrestamoElementos } from "../models/PrestamoElementos";
 import { Usuario } from "../models/Usuario";
 import { Elemento } from "../models/Elemento";
 import { Op } from "sequelize";
-const QRCode = require("qrcode"); // FUNCIONA bien con CommonJS
+const QRCode = require("qrcode");
 import path from "path";
 import fs from "fs";
 import { enviarNotificacionGeneral } from "../services/notificaciongeneral";
+import cloudinary from "../config/cloudinary";
+import streamifier from "streamifier";
+
+// Helper para subir a Cloudinary desde buffer
+const uploadToCloudinary = (file: Express.Multer.File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.buffer) {
+      return reject(
+        new Error("No se recibió imagen válida para subir a Cloudinary")
+      );
+    }
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "catalogo" },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result?.secure_url || "");
+      }
+    );
+    streamifier.createReadStream(file.buffer).pipe(stream);
+  });
+};
+
 export class CatalogoController {
   static subirElemento = async (req: Request, res: Response) => {
     try {
@@ -15,12 +37,9 @@ export class CatalogoController {
         Descripcion = "Elemento agregado desde catálogo",
         Cantidad,
       } = req.body;
-      const Imagen = req.file?.filename;
 
-      if (!Nombre || !Imagen || !Cantidad) {
-        res
-          .status(400)
-          .json({ error: "Nombre, imagen y cantidad son requeridos" });
+      if (!Nombre || !Cantidad) {
+        res.status(400).json({ error: "Nombre y cantidad son requeridos" });
         return;
       }
 
@@ -32,11 +51,27 @@ export class CatalogoController {
         return;
       }
 
+      // Subir imagen a Cloudinary
+      let imagenUrl: string | null = null;
+      if (req.file && req.file.mimetype && req.file.buffer) {
+        const mimeTypesPermitidos = ["image/jpeg", "image/png", "image/webp"];
+        if (!mimeTypesPermitidos.includes(req.file.mimetype)) {
+          res.status(400).json({
+            error: "Tipo de archivo no permitido. Usa JPG, PNG o WEBP.",
+          });
+          return;
+        }
+        imagenUrl = await uploadToCloudinary(req.file);
+      } else {
+        res.status(400).json({ error: "La imagen es obligatoria" });
+        return;
+      }
+
       // 1️⃣ Crear el Elemento base
       const nuevoElemento = await Elemento.create({
         Nombre,
         Descripcion,
-        Imagen,
+        Imagen: imagenUrl,
         CantidadTotal: cantidadNum,
         CantidadDisponible: cantidadNum,
         Disponible: true,
@@ -47,7 +82,7 @@ export class CatalogoController {
         tipo: "alquiler",
         IdElemento: nuevoElemento.IdElemento,
         nombreElemento: nuevoElemento.Nombre,
-        nombreAprendiz: "Aprendiz desconocido", // Puedes reemplazar por el real si lo tienes
+        nombreAprendiz: "Aprendiz desconocido",
         codigo: `ALQ-${Date.now()}`,
       });
 
@@ -56,7 +91,6 @@ export class CatalogoController {
       if (!fs.existsSync(qrPath)) {
         fs.mkdirSync(qrPath, { recursive: true });
       }
-
       const rutaQR = path.join(qrPath, `${nuevoElemento.IdElemento}.png`);
       await QRCode.toFile(rutaQR, contenidoQR, {
         errorCorrectionLevel: "H",
@@ -67,7 +101,7 @@ export class CatalogoController {
       const nuevoAlquiler = await PrestamoElementos.create({
         IdElemento: nuevoElemento.IdElemento,
         NombreElemento: Nombre,
-        Imagen,
+        Imagen: imagenUrl,
         CantidadDisponible: cantidadNum,
         Observaciones: "catalogo",
         FechaSolicitud: new Date(),
@@ -85,14 +119,14 @@ export class CatalogoController {
         mensaje: `Se ha agregado un nuevo elemento al catálogo: "${Nombre}"`,
         tipo: "Catalogo",
         idUsuarios: idsAprendices,
-        imagenUrl: `http://localhost:3001/uploads/${Imagen}`,
+        imagenUrl: imagenUrl,
         RutaDestino: "alquilerap",
       });
 
       res.status(201).json({
         mensaje: "Elemento creado con QR y notificación enviada ✅",
-        elemento: nuevoElemento,
-        alquiler: nuevoAlquiler,
+        elemento: { ...nuevoElemento.dataValues, ImagenUrl: imagenUrl },
+        alquiler: { ...nuevoAlquiler.dataValues, ImagenUrl: imagenUrl },
       });
     } catch (error) {
       console.error("❌ Error al subir elemento:", error);
@@ -105,7 +139,7 @@ export class CatalogoController {
       const elementos = await PrestamoElementos.findAll({
         where: {
           Observaciones: "catalogo",
-          IdElemento: { [Op.ne]: 0 }, // 🔥 Excluye los inválidos
+          IdElemento: { [Op.ne]: 0 },
         },
         include: [
           {
@@ -116,12 +150,19 @@ export class CatalogoController {
         order: [["createdAt", "DESC"]],
       });
 
-      res.json(elementos);
+      // Devuelve la URL de Cloudinary en ImagenUrl
+      res.json(
+        elementos.map((e: any) => ({
+          ...e.dataValues,
+          ImagenUrl: e.Imagen || e.elemento?.Imagen || null,
+        }))
+      );
     } catch (error) {
       console.error("Error al obtener catálogo:", error);
       res.status(500).json({ error: "Error al obtener los elementos" });
     }
   };
+
   static actualizarImagen = async (req: Request, res: Response) => {
     try {
       const { IdAlquiler } = req.params;
@@ -131,10 +172,21 @@ export class CatalogoController {
         return;
       }
 
-      if (req.file) {
-        alquiler.Imagen = req.file.filename;
+      if (req.file && req.file.mimetype && req.file.buffer) {
+        const mimeTypesPermitidos = ["image/jpeg", "image/png", "image/webp"];
+        if (!mimeTypesPermitidos.includes(req.file.mimetype)) {
+          res.status(400).json({
+            error: "Tipo de archivo no permitido. Usa JPG, PNG o WEBP.",
+          });
+          return;
+        }
+        const imagenUrl = await uploadToCloudinary(req.file);
+        alquiler.Imagen = imagenUrl;
         await alquiler.save();
-        res.json({ mensaje: "Imagen actualizada correctamente", alquiler });
+        res.json({
+          mensaje: "Imagen actualizada correctamente",
+          alquiler: { ...alquiler.dataValues, ImagenUrl: imagenUrl },
+        });
         return;
       } else {
         res.status(400).json({ error: "No se recibió imagen" });

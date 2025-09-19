@@ -1,41 +1,52 @@
 import { Request, Response } from "express";
 import { Elemento } from "../models/Elemento";
-import {  PrestamoElementos } from "../models/PrestamoElementos";
+import { PrestamoElementos } from "../models/PrestamoElementos";
 import fs from "fs";
 import path from "path";
 import { Op } from "sequelize";
+import cloudinary from "../config/cloudinary";
+import streamifier from "streamifier";
 
 const QRCode = require("qrcode");
 export class ElementoController {
   static async crearElemento(req: Request, res: Response) {
     try {
       const { Nombre, Descripcion, Cantidad } = req.body;
-      const Imagen = req.file?.filename;
-
-      const mimeTypesPermitidos = ["image/jpeg", "image/png", "image/webp"];
 
       // Validaciones
-      if (!Nombre || !Imagen || !Cantidad) {
-        res
-          .status(400)
-          .json({ mensaje: "Nombre, imagen y cantidad son obligatorios" });
-        return;
-      }
-
-      if (!req.file || !mimeTypesPermitidos.includes(req.file.mimetype)) {
-        res
-          .status(400)
-          .json({
-            mensaje: "Tipo de archivo no permitido. Usa JPG, PNG o WEBP.",
-          });
+      if (!Nombre || !Cantidad) {
+        res.status(400).json({ mensaje: "Nombre y cantidad son obligatorios" });
         return;
       }
 
       const cantidadNum = parseInt(Cantidad);
       if (isNaN(cantidadNum) || cantidadNum < 1) {
-        res
-          .status(400)
-          .json({ mensaje: "Cantidad debe ser un número mayor a 0" });
+        res.status(400).json({ mensaje: "Cantidad debe ser un número mayor a 0" });
+        return;
+      }
+
+      // Subida de imagen a Cloudinary
+      let imagenUrl: string | null = null;
+      if (req.file && req.file.mimetype && req.file.buffer) {
+        const mimeTypesPermitidos = ["image/jpeg", "image/png", "image/webp"];
+        if (!mimeTypesPermitidos.includes(req.file.mimetype)) {
+          res.status(400).json({
+            mensaje: "Tipo de archivo no permitido. Usa JPG, PNG o WEBP.",
+          });
+          return;
+        }
+        imagenUrl = await new Promise<string>((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "elementos" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result?.secure_url || "");
+            }
+          );
+          streamifier.createReadStream(req.file!.buffer).pipe(uploadStream);
+        });
+      } else {
+        res.status(400).json({ mensaje: "La imagen es obligatoria" });
         return;
       }
 
@@ -43,13 +54,13 @@ export class ElementoController {
       const nuevoElemento = await Elemento.create({
         Nombre,
         Descripcion,
-        Imagen,
+        Imagen: imagenUrl,
         CantidadTotal: cantidadNum,
         CantidadDisponible: cantidadNum,
         Disponible: true,
       });
 
-      // 2. Generar QR
+      // 2. Generar QR (local, igual que antes)
       const qrPayload = {
         IdElemento: nuevoElemento.IdElemento,
         Nombre: nuevoElemento.Nombre,
@@ -57,19 +68,19 @@ export class ElementoController {
       };
 
       const qrDir = path.resolve(__dirname, "../../public/qrcodes");
-
       if (!fs.existsSync(qrDir)) {
         fs.mkdirSync(qrDir, { recursive: true });
       }
-
       const qrPath = path.join(qrDir, `${nuevoElemento.IdElemento}.png`);
-      console.log("📦 QR generado en:", qrPath); // ← AGREGA ESTA LÍNEA
       await QRCode.toFile(qrPath, JSON.stringify(qrPayload));
-      console.log("📦 QR generado en:", qrPath);
+
       // 3. Respuesta
       res.json({
         mensaje: "Elemento creado exitosamente con QR",
-        elemento: nuevoElemento,
+        elemento: {
+          ...nuevoElemento.dataValues,
+          ImagenUrl: imagenUrl,
+        },
         qrUrl: `/qrcodes/${nuevoElemento.IdElemento}.png`,
       });
       return;
@@ -85,7 +96,12 @@ export class ElementoController {
       const elementos = await Elemento.findAll({
         order: [["createdAt", "DESC"]],
       });
-      res.json(elementos);
+      res.json(
+        elementos.map((e) => ({
+          ...e.dataValues,
+          ImagenUrl: e.Imagen || null,
+        }))
+      );
       return;
     } catch (error) {
       console.error("Error al obtener catálogo:", error);

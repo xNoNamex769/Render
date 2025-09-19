@@ -8,9 +8,10 @@ import {
   validateIdUsuario
 } from '../middleware/AlquilerElementos';
 import { verificarToken } from '../middleware/VerificarToken'; 
-import { PrestamoElementosControllers } from '../controllers/PrestamoElementosControllers'; // <-- corregido import
-import multer from 'multer';
+import { PrestamoElementosControllers } from '../controllers/PrestamoElementosControllers';
 import { CatalogoController } from '../controllers/CatalogoAlquiler';
+// 👇 Usa tu middleware de memoria
+import { upload } from '../middleware/uploadConfig';
 
 const router = Router();
 
@@ -60,24 +61,16 @@ router.put("/alquiler/:IdAlquiler/cumplido", PrestamoElementosControllers.marcar
 // Registrar alquiler desde QR
 router.post(
   '/desde-qr',
-  verificarToken, // extrae IdUsuario desde token
+  verificarToken,
   PrestamoElementosControllers.registrarDesdeQR
 );
 
 router.post('/qr', verificarToken, PrestamoElementosControllers.registrarDesdeQR);
 
-// Configuración Multer para subida de imágenes
-const storage = multer.diskStorage({
-  destination: 'uploads/',
-  filename: (_, file, cb) => cb(null, Date.now() + '-' + file.originalname),
-});
-
-const upload = multer({ storage });
-
-// Subir elementos al catálogo
+// 👇 Subir elementos al catálogo con Cloudinary (memoria)
 router.post('/catalogo', upload.single('imagen'), (req, res) => {
   const io = req.app.get('io');
-  (req as any).io = io; // inyectamos socket.io si usas
+  (req as any).io = io;
   CatalogoController.subirElemento(req as any, res);
 });
 
