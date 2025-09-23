@@ -34,6 +34,8 @@ import PerfilInstructorRouter from "./routes/PerfilInstructor.Routes";
 import aprendizRoutes from "./routes/Aprendiz.routes";
 import EventoActividadRoutes from "./routes/EventoActividad.Routes";
 import ReaccionEventoRouter from './routes/ReaccionEvento.Routes';
+import dialogflowRouter from "./routes/dialogflowWebhook";
+
 
 async function connectDB() {
   try {
@@ -73,6 +75,7 @@ app.use("/qrcodes", express.static(path.join(__dirname, "../public/qrcodes")));
 app.use(express.json({ limit: "10mb" }));
 
 
+app.use("/api/dialogflow", dialogflowRouter);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
 app.use("/api/actividad", ActividadRouter);
