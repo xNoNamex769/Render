@@ -31,11 +31,11 @@ router.post("/", async (req: Request, res: Response) => {
 
   // Intent: pestañas de navegación
   if (intent === "info_pestañas") {
-    respuesta = `Nuestra plataforma tiene estas pestañas:
-- **Actividades**: consulta e inscríbete en actividades lúdicas.
-- **Eventos**: revisa eventos próximos.
-- **Perfil**: administra tu información personal.
-- **Notificaciones**: recibe avisos importantes.`;
+    respuesta = `Nuestra plataforma tiene estas pestañas:\n
+- Actividades: consulta e inscríbete en actividades lúdicas.\n
+- Eventos: revisa eventos próximos.\n
+- Perfil: administra tu información personal.\n
+- Notificaciones: recibe avisos importantes.`;
   }
 
   // Intent: objetivo de la plataforma
@@ -44,8 +44,15 @@ router.post("/", async (req: Request, res: Response) => {
       "Esta plataforma fue creada para centralizar la información de actividades y eventos del SENA, ayudando a los aprendices a organizar su tiempo y participar más fácilmente.";
   }
 
+  // 👇 Aquí usamos fulfillmentMessages en lugar de solo fulfillmentText
   res.json({
-    fulfillmentText: respuesta,
+    fulfillmentMessages: [
+      {
+        text: {
+          text: [respuesta],
+        },
+      },
+    ],
   });
 });
 
