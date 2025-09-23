@@ -15,8 +15,7 @@ router.post("/", async (req: Request, res: Response) => {
     const actividades = await Actividad.findAll();
 
     if (actividades.length > 0) {
-      respuesta =
-        "Estas son las actividades disponibles:";
+      respuesta = "Estas son las actividades disponibles:";
       fulfillmentMessages.push({
         text: { text: [respuesta] },
       });
@@ -45,7 +44,9 @@ router.post("/", async (req: Request, res: Response) => {
 
   // Intent: eventos generales
   if (intent === "DisponibilidadEventos") {
-    const eventos = await Evento.findAll();
+    const eventos = await Evento.findAll({
+      include: ["PlanificacionEvento"], // importante para traer ImagenEvento
+    });
 
     if (eventos.length > 0) {
       respuesta = "Estos son los eventos disponibles:";
@@ -54,12 +55,13 @@ router.post("/", async (req: Request, res: Response) => {
       });
 
       // Convertir cada evento en tarjeta
-      eventos.forEach((e) => {
+      eventos.forEach((e: any) => {
         fulfillmentMessages.push({
           card: {
             title: e.NombreEvento,
             subtitle: `📅 ${e.FechaInicio} a ${e.FechaFin}\n⏰ ${e.HoraInicio} - ${e.HoraFin}\n📍 ${e.UbicacionEvento}\nℹ️ ${e.DescripcionEvento ?? "Sin descripción"}`,
-            imageUri: "https://i.ibb.co/0jX0s0L/default-event.png", // puedes guardar imágenes en la BD si quieres
+            imageUri: e.PlanificacionEvento?.ImagenEvento 
+              ?? "https://i.ibb.co/0jX0s0L/default-event.png",
             buttons: [
               {
                 text: "Inscribirme",
