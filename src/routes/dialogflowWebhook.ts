@@ -2,12 +2,11 @@
 import express, { Router, Request, Response } from "express";
 import { SessionsClient } from "@google-cloud/dialogflow";
 
-
 const dialogflowRouter: Router = express.Router();
 
-// Inicializa el cliente de Dialogflow con tu JSON de servicio
+// Inicializa el cliente de Dialogflow usando la variable de entorno
 const sessionClient = new SessionsClient({
-  keyFilename: "../keys/sixth-autonomy-473016-j7-e0949feeb5db.json", // ruta real de tu JSON
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON!),
 });
 
 // POST /api/dialogflow
