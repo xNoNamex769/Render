@@ -75,9 +75,10 @@ app.use("/qrcodes", express.static(path.join(__dirname, "../public/qrcodes")));
 app.use(express.json({ limit: "10mb" }));
 
 
-app.use("/api/dialogflow", dialogflowRouter);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
+app.use("/api/dialogflow", dialogflowRouter);
+
 app.use("/api/actividad", ActividadRouter);
 app.use("/api/alquilerelementos", AlquilerElementosRouter);
 app.use("/api/asistencia", AsistenciaRouter);

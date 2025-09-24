@@ -1,100 +1,59 @@
-import express, { Request, Response } from "express";
-import { Actividad } from "../models/Actividad"; 
-import { Evento } from "../models/Evento";
+// dialogflowWebhook.ts
+import express, { Router, Request, Response } from "express";
+import { SessionsClient } from "@google-cloud/dialogflow";
 
-const router = express.Router();
 
-router.post("/", async (req: Request, res: Response) => {
-  const intent = req.body.queryResult.intent.displayName;
+const dialogflowRouter: Router = express.Router();
 
-  let respuesta = "No entendí bien tu pregunta 😅";
-  let fulfillmentMessages: any[] = [];
-
-  // Intent: actividades generales
-  if (intent === "Disponibilidad") {
-    const actividades = await Actividad.findAll();
-
-    if (actividades.length > 0) {
-      respuesta = "Estas son las actividades disponibles:";
-      fulfillmentMessages.push({
-        text: { text: [respuesta] },
-      });
-
-      // Convertir cada actividad en tarjeta
-      actividades.forEach((a) => {
-        fulfillmentMessages.push({
-          card: {
-            title: a.NombreActi,
-            subtitle: `📅 ${a.FechaInicio} a ${a.FechaFin}\n⏰ ${a.HoraInicio} - ${a.HoraFin}\n📍 ${a.Ubicacion ?? "Por definir"}`,
-            imageUri: a.Imagen ?? "https://i.ibb.co/0jX0s0L/default-event.png",
-            buttons: [
-              {
-                text: "Ver detalles",
-                postback: "https://miapp.com/actividades/" + a.IdActividad,
-              },
-            ],
-          },
-        });
-      });
-    } else {
-      respuesta = "Por ahora no hay actividades registradas.";
-      fulfillmentMessages.push({ text: { text: [respuesta] } });
-    }
-  }
-
-  // Intent: eventos generales
-  if (intent === "DisponibilidadEventos") {
-    const eventos = await Evento.findAll({
-      include: ["PlanificacionEvento"], // importante para traer ImagenEvento
-    });
-
-    if (eventos.length > 0) {
-      respuesta = "Estos son los eventos disponibles:";
-      fulfillmentMessages.push({
-        text: { text: [respuesta] },
-      });
-
-      // Convertir cada evento en tarjeta
-      eventos.forEach((e: any) => {
-        fulfillmentMessages.push({
-          card: {
-            title: e.NombreEvento,
-            subtitle: `📅 ${e.FechaInicio} a ${e.FechaFin}\n⏰ ${e.HoraInicio} - ${e.HoraFin}\n📍 ${e.UbicacionEvento}\nℹ️ ${e.DescripcionEvento ?? "Sin descripción"}`,
-            imageUri: e.PlanificacionEvento?.ImagenEvento 
-              ?? "https://i.ibb.co/0jX0s0L/default-event.png",
-            buttons: [
-              {
-                text: "Inscribirme",
-                postback: "https://miapp.com/eventos/" + e.IdEvento,
-              },
-            ],
-          },
-        });
-      });
-    } else {
-      respuesta = "Por ahora no hay eventos registrados.";
-      fulfillmentMessages.push({ text: { text: [respuesta] } });
-    }
-  }
-
-  // Otros intents
-  if (intent === "info_pestañas") {
-    respuesta = `Nuestra plataforma tiene estas pestañas:\n
-- Actividades: consulta e inscríbete en actividades lúdicas.\n
-- Eventos: revisa eventos próximos.\n
-- Perfil: administra tu información personal.\n
-- Notificaciones: recibe avisos importantes.`;
-    fulfillmentMessages.push({ text: { text: [respuesta] } });
-  }
-
-  if (intent === "info_objetivo") {
-    respuesta =
-      "Esta plataforma fue creada para centralizar la información de actividades y eventos del SENA, ayudando a los aprendices a organizar su tiempo y participar más fácilmente.";
-    fulfillmentMessages.push({ text: { text: [respuesta] } });
-  }
-
-  // Respuesta final
-  res.json({ fulfillmentMessages });
+// Inicializa el cliente de Dialogflow con tu JSON de servicio
+const sessionClient = new SessionsClient({
+  keyFilename: "../keys/sixth-autonomy-473016-j7-e0949feeb5db.json", // ruta real de tu JSON
 });
 
-export default router;
+// POST /api/dialogflow
+dialogflowRouter.post("/", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { message, sessionId } = req.body as { message?: string; sessionId?: string };
+
+    if (!message || !sessionId) {
+      res.status(400).json({ error: "Se requiere 'message' y 'sessionId'" });
+      return;
+    }
+
+    const sessionPath = sessionClient.projectAgentSessionPath(
+      "sixth-autonomy-473016-j7", // Project ID de tu JSON
+      sessionId
+    );
+
+    const request = {
+      session: sessionPath,
+      queryInput: {
+        text: {
+          text: message,
+          languageCode: "es-CO",
+        },
+      },
+    };
+
+    const responses = await sessionClient.detectIntent(request);
+    const result = responses[0].queryResult;
+
+    if (!result) {
+      res.status(500).json({ error: "No se recibió respuesta de Dialogflow" });
+      return;
+    }
+
+    res.json({
+      sessionId,
+      fulfillmentMessages: result.fulfillmentMessages ?? [],
+      intent: result.intent?.displayName ?? "Fallback",
+      queryText: result.queryText ?? "",
+      responseText: result.fulfillmentText ?? "",
+    });
+  } catch (error) {
+    console.error("Error conectando con Dialogflow:", error);
+    res.status(500).json({ error: "Error conectando con Dialogflow" });
+  }
+});
+
+export default dialogflowRouter;
