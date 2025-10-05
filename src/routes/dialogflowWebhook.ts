@@ -35,18 +35,7 @@ dialogflowRouter.post("/", async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    if (lower.includes("actividad") || lower.includes("evento")) {
-      res.json({
-        sessionId,
-        intent: "OpcionesConsulta",
-        responseText: "¿Qué deseas consultar?",
-        options: [
-          { title: "📋 Actividades disponibles", value: "Ver actividades" },
-          { title: "🎉 Próximos eventos", value: "Ver eventos" },
-        ],
-      });
-      return;
-    }
+  
 
     const sessionPath = sessionClient.projectAgentSessionPath(
       "sixth-autonomy-473016-j7", // 🔹 Tu Project ID
