@@ -1,15 +1,14 @@
-// dialogflowWebhook.ts
+// backend/routes/dialogflowWebhook.ts
 import express, { Router, Request, Response } from "express";
 import { SessionsClient } from "@google-cloud/dialogflow";
 
 const dialogflowRouter: Router = express.Router();
 
-// Inicializa el cliente de Dialogflow usando la variable de entorno
+// Inicializa el cliente de Dialogflow
 const sessionClient = new SessionsClient({
   credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON!),
 });
 
-// POST /api/dialogflow
 dialogflowRouter.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
     const { message, sessionId } = req.body as { message?: string; sessionId?: string };
@@ -19,18 +18,44 @@ dialogflowRouter.post("/", async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // 👉 Ejemplo de respuesta personalizada desde backend
+    const lower = message.toLowerCase();
+
+    if (lower.includes("hora") || lower.includes("tiempo")) {
+      const horaActual = new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+      res.json({
+        sessionId,
+        fulfillmentMessages: [],
+        intent: "HoraActual",
+        queryText: message,
+        responseText: `La hora actual es ${horaActual}.`,
+      });
+      return;
+    }
+
+    if (lower.includes("actividades") || lower.includes("eventos")) {
+      res.json({
+        sessionId,
+        intent: "OpcionesConsulta",
+        responseText: "¿Qué deseas consultar?",
+        options: [
+          { title: "Actividades disponibles", value: "Ver actividades" },
+          { title: "Próximos eventos", value: "Ver eventos" },
+        ],
+      });
+      return;
+    }
+
+    // 🔹 Caso normal: enviamos el mensaje a Dialogflow
     const sessionPath = sessionClient.projectAgentSessionPath(
-      "sixth-autonomy-473016-j7", // Project ID de tu JSON
+      "sixth-autonomy-473016-j7", // Tu Project ID
       sessionId
     );
 
     const request = {
       session: sessionPath,
       queryInput: {
-        text: {
-          text: message,
-          languageCode: "es-CO",
-        },
+        text: { text: message, languageCode: "es-CO" },
       },
     };
 
@@ -47,7 +72,7 @@ dialogflowRouter.post("/", async (req: Request, res: Response): Promise<void> =>
       fulfillmentMessages: result.fulfillmentMessages ?? [],
       intent: result.intent?.displayName ?? "Fallback",
       queryText: result.queryText ?? "",
-      responseText: result.fulfillmentText ?? "",
+      responseText: result.fulfillmentText ?? "No tengo una respuesta para eso 😅",
     });
   } catch (error) {
     console.error("Error conectando con Dialogflow:", error);
