@@ -104,6 +104,7 @@ export class AprendizController {
       identificacion: 'IdentificacionUsuario',
       id: 'IdentificacionUsuario',
       documento: 'IdentificacionUsuario',
+       numerodedocumento: 'IdentificacionUsuario',
       numero: 'IdentificacionUsuario',
       cedula: 'IdentificacionUsuario',
       cedula_de_ciudadania: 'IdentificacionUsuario',
@@ -194,22 +195,27 @@ export class AprendizController {
       const row = data[i]
       try {
         // sacar valores usando claves canónicas (o fallback)
-        const IdentificacionUsuario =
-          (row.IdentificacionUsuario ?? row.identificacion ?? row.id ?? row.documento ?? '').toString().trim()
+       const IdentificacionUsuario =
+  (row.IdentificacionUsuario ?? row.identificacion ?? row.id ?? row.documento ?? '').toString().trim()
+
         const Nombre = (row.Nombre ?? row.nombre ?? row.Nombres ?? '').toString().trim()
         const Apellido = (row.Apellido ?? row.apellidos ?? '').toString().trim()
         const Correo = (row.Correo ?? row.email ?? row['correo'] ?? '').toString().trim().toLowerCase()
         const Telefono = (row.Telefono ?? row.celular ?? row.tel ?? '').toString().trim()
         const ContrasenaRaw = (row.Contrasena ?? row.password ?? row.contraseña ?? '').toString()
-        const Ficha = (row.Ficha ?? row.ficha ?? row['ficha_de_caracterizacion'] ?? '').toString().trim()
-        const ProgramaFormacion = (row.ProgramaFormacion ?? row.programa ?? '').toString().trim()
-        const Jornada = (row.Jornada ?? row.jornada ?? '').toString().trim()
+       const Ficha =
+  (row.Ficha ?? row.ficha ?? row['ficha_de_caracterizacion'] ?? req.body.ficha ?? '').toString().trim();
+const ProgramaFormacion =
+  (row.ProgramaFormacion ?? row.programa ?? req.body.programa ?? '').toString().trim();
+
+        const Jornada = (row.Jornada ?? row.jornada ?? '').toString().trim();
+
 
         // Si no hay correo y no hay identificación, saltamos
         if (!Correo && !IdentificacionUsuario) {
           report.skippedMissing++
           report.processed.push({
-            IdentificacionUsuario,
+         IdentificacionUsuario: IdentificacionUsuario || row.documento || '—',
             Correo,
             Nombre,
             Apellido,
@@ -229,7 +235,7 @@ export class AprendizController {
         if (yaPorCorreo || yaPorId) {
           report.skippedExisting++
           report.processed.push({
-            IdentificacionUsuario,
+             IdentificacionUsuario: IdentificacionUsuario || row.documento || '—',
             Correo,
             Nombre,
             Apellido,
@@ -240,13 +246,17 @@ export class AprendizController {
         }
 
         // contraseña por defecto
-        const contrasenaLimpia =
-          typeof ContrasenaRaw === 'string' && ContrasenaRaw.trim() !== '' ? ContrasenaRaw.trim() : '123456'
-        const hashed = await hashPassword(contrasenaLimpia)
+       // contraseña por defecto = número de documento
+const contrasenaLimpia =
+  typeof ContrasenaRaw === 'string' && ContrasenaRaw.trim() !== ''
+    ? ContrasenaRaw.trim()
+    : IdentificacionUsuario
+const hashed = await hashPassword(contrasenaLimpia)
+
 
         // crear Usuario
         const usuario = await Usuario.create({
-          IdentificacionUsuario,
+          IdentificacionUsuario: IdentificacionUsuario,
           Nombre,
           Apellido,
           Correo,
@@ -270,15 +280,16 @@ export class AprendizController {
         const aprendiz = await Aprendiz.create({
           IdUsuario: usuario.IdUsuario,
           IdRolUsuario: rol.IdRol,
-          Ficha,
-          ProgramaFormacion,
-          Jornada,
+           Ficha: req.body.ficha,       
+          
+  Jornada: req.body.jornada,  
+  ProgramaFormacion: req.body.programa, 
         })
         console.log('Aprendiz creado (IdUsuario en Aprendiz):', aprendiz?.IdUsuario)
 
         report.inserted++
         report.processed.push({
-          IdentificacionUsuario,
+          IdentificacionUsuario: IdentificacionUsuario || row.documento || '—',
           Correo,
           Nombre,
           Apellido,
@@ -305,7 +316,7 @@ export class AprendizController {
       console.warn('No se pudo borrar archivo temporal:', e)
     }
 
-    res.json({ mensaje: '✅ Datos importados (parcial/total)', reporte: report })
+    res.json({ mensaje: ' Datos importados (parcial/total)', reporte: report })
     return
   } catch (error: any) {
     console.error(' Error al importar Excel:', error)

@@ -11,18 +11,30 @@ import { PerfilInstructor } from "../models/PerfilInstructor";
 // Controlador encargado de gestionar operaciones relacionadas con el modelo Usuario
 export class UsuarioController {
   // Obtener todos los usuarios ordenados por fecha de creación
-  static getAll = async (req: Request, res: Response) => {
+ static getAll = async (req: Request, res: Response) => {
   try {
-    console.log("GET /api/usuario - Obtener todos los usuarios");
+    console.log("GET /api/usuario - Obtener solo Admin e Instructor");
     const usuarios = await Usuario.findAll({
+      where: { IdRol: [1, 3] }, // Solo Admin e Instructor
       order: [["createdAt", "ASC"]],
+      include: [
+        {
+          model: PerfilInstructor,
+          as: "perfilInstructor",
+          attributes: ["profesion", "ubicacion", "imagen", "imagenUbicacion"]
+        },
+        {
+          model: RolUsuario,
+          attributes: ["NombreRol"]
+        }
+      ]
     });
     res.json(usuarios);
   } catch (error) {
-    console.error("Error al obtener usuarios:", error);  // <--- Añadido para ver error real
     res.status(500).json({ error: "Hubo un error al obtener los usuarios" });
   }
 };
+
   // Obtener un usuario por su ID
 static getUsuarioId = async (req: Request, res: Response) => {
   try {
