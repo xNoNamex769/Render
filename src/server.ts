@@ -35,6 +35,8 @@ import aprendizRoutes from "./routes/Aprendiz.routes";
 import EventoActividadRoutes from "./routes/EventoActividad.Routes";
 import ReaccionEventoRouter from './routes/ReaccionEvento.Routes';
 import dialogflowRouter from "./routes/dialogflowWebhook";
+import EmailRoutes from "./routes/Email.Routes"
+
 
 
 async function connectDB() {
